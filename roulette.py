@@ -1,36 +1,74 @@
 import wx
 import pandas as pd
 import csv
+import random
 
 class RouletteFrame(wx.Frame):
 	def __init__(self,parent):
 
-		#inputを元にランダマイズ----------------------------------------------
-		categories = input.columns
-		material_list = [0] * len(categories)
-		for column_name,i in zip(categories,range(len(categories))):
-			sample = input[column_name].sample()
-			Nansample = sample.dropna()
-			material_list[i] = Nansample.values.tolist()
+		#input達を元にランダマイズ----------------------------------------------
+		kind = random.randint(2,4)
+		sample = input_material.sample(n=kind)
 
-		output = [flatten for inner in material_list for flatten in inner]
-		outputList = set(output)
-		last = list(outputList)
-		print(last)
-		kind = len(last)
-		print(kind)
+		#評価シート出力のための処理
+		array = sample['Index'].tolist()
+
+		self.counter_list = [0] * (len(materials_list))
+		for i in array:
+			self.counter_list[i] = 1
+
+		#論理演算の邪魔なのでIndex削除
+		del sample['Index']
+
+		or_data = sample.iloc[0]
+		for i in range(len(sample.index) - 1):
+		    or_data = or_data | sample.iloc[i+1]
+
+		#具材達出力
+		materials = sample.index
+		last = materials.tolist()
+
+		#ソースのランダムサンプリング
+		pentagon = input_sauce | or_data
+		pentagon_sum = pentagon.sum(axis=1)
+		IndexSeries = pd.Series(data=range(4))
+		IndexSeries.index = input_sauce.index
+
+		rank = pd.DataFrame()
+		rank['value'] = pentagon_sum
+		rank['index'] = IndexSeries
+
+		rank_index = rank[rank['value'] == rank['value'].max()].index
+		sauce_name = rank.loc[rank_index.tolist(),:]
+		sauce_row = sauce_name.sample()
+		sauce = sauce_row.index.tolist()
+		sauce_index = sauce_row['index'].tolist()
+		sauce.extend(sauce_index)
+		Result_sauce, Result_index = sauce
+
+		#足りない味を一応出力
+		fill = pentagon.loc[Result_sauce]
+		lack = fill[fill == 0].index
+
+		print(lack.tolist())
+
+		#評価ファイルに出力
+		self.counter_list[len(input_material.index) + Result_index] = 1
 
 		#リザルトウィンドウの初期化--------------------------------------------
 		wx.Frame.__init__(self,parent,-1,"Result",size=(kind*200,500))
 		
 		self.panel = wx.Panel(self)
-		end_button = wx.Button(self.panel, wx.ID_ANY, '終了')
+		self.EnterText = wx.TextCtrl(self.panel, wx.ID_ANY)
 
-		end_button.Bind(wx.EVT_BUTTON, self.exit)
+		self.EnterText.Bind(wx.EVT_TEXT, self.TextEnter)
 
 		self.layout = wx.BoxSizer(wx.VERTICAL)
 		self.TextZone = wx.BoxSizer(wx.HORIZONTAL)
 		ButtonZone = wx.BoxSizer(wx.HORIZONTAL)
+		text_sauce = wx.StaticText(self.panel, wx.ID_ANY, Result_sauce, style=wx.TE_CENTER)
+		text_sauce.SetForegroundColour('#FF0000')
+		text_sauce.SetFont(font)
 
 		
 		#気持ち悪いところ---------------------------------------------------------
@@ -104,13 +142,19 @@ class RouletteFrame(wx.Frame):
 			text_5.SetFont(font)
 			self.TextZone.Add(text_5, proportion=1, flag=wx.ALIGN_CENTER)
 
-		ButtonZone.Add(end_button, flag=wx.ALIGN_BOTTOM)
+		self.TextZone.Add(text_sauce, proportion=1, flag=wx.ALIGN_CENTER)
+		ButtonZone.Add(self.EnterText, flag=wx.ALIGN_BOTTOM)
 		self.layout.Add(self.TextZone, proportion=3, flag=wx.ALIGN_CENTER)
 		self.layout.Add(ButtonZone, proportion=1, flag=wx.ALIGN_CENTER)
 		self.panel.SetSizer(self.layout)
 
 	#親ウィンドウに戻る--------------------------------------------------------
-	def exit(self, event):
+	def TextEnter(self, event):
+		self.counter_list[len(self.counter_list)-1] = self.EnterText.GetValue()
+		#評価ファイルに書き込み
+		with open('evaluate.csv','a') as file:
+			writer = csv.writer(file, lineterminator='\n')
+			writer.writerow(self.counter_list)
 		self.Destroy()
 
 
@@ -149,28 +193,23 @@ class Mainframe(wx.Frame):
 	def exit(self, event):
 		self.Destroy()
 
-#ファイル入出力------------------------------------------------------------
-def InputAndOutputFile():
-	#ただ具材を入力してリストアップして出力するだけ（なのに…）
-	inputFile = pd.read_excel("materials.xlsx")
-	#欠損値対策
-	FillNan = inputFile.fillna(0)
-	array = FillNan.values.tolist()
-	output = [flatten for inner in array for flatten in inner]
-	#書き込み準備
-	outputList = set(output)
-	outputList.remove(0)
-	last = list(outputList)
-	last.append('評価')
-	with open('test.csv','w') as file:
-	    writer = csv.writer(file, lineterminator='\n')
-	    writer.writerow(last)
-	return inputFile
-
 #一応メイン（なのかな？）----------------------------------------------------
 if __name__ == '__main__':
 	app = wx.App()
-	input = InputAndOutputFile()
+	#ファイル入出力
+	input_material = pd.read_excel("materials.xlsx", sheet_name="materials", index_col=0)
+	input_sauce = pd.read_excel("materials.xlsx", sheet_name="sauces", index_col=0)
+	materials_list = input_material.index.tolist()
+	sauces_list = input_sauce.index.tolist()
+	materials_list.extend(sauces_list)
+	materials_list.append('評価')
+	with open('evaluate.csv','w') as file:
+	    writer = csv.writer(file, lineterminator='\n')
+	    writer.writerow(materials_list)
+	#評価入力のための添え字付与
+	input_material['Index'] = range(len(input_material.index))
+
+	#親ウィンドウスタート
 	font = wx.Font(20,wx.FONTFAMILY_TELETYPE, wx.FONTSTYLE_NORMAL, wx.FONTWEIGHT_BOLD)
 	frame = Mainframe()
 	frame.Centre()
