@@ -7,15 +7,14 @@ class RouletteFrame(wx.Frame):
 
 		#inputを元にランダマイズ----------------------------------------------
 		categories = input.columns
-		material_last = [0] * len(input.columns)
-		for i in range(len(categories)):
-			sample = input[[i]].sample()
+		material_list = [0] * len(categories)
+		for column_name,i in zip(categories,range(len(categories))):
+			sample = input[column_name].sample()
 			Nansample = sample.dropna()
-			material_last[i] = Nansample.values.tolist()
+			material_list[i] = Nansample.values.tolist()
 
-		output = [flatten for inner in material_last for flatten in inner]
-		List = [flatten for inner in output for flatten in inner]
-		outputList = set(List)
+		output = [flatten for inner in material_list for flatten in inner]
+		outputList = set(output)
 		last = list(outputList)
 		print(last)
 		kind = len(last)

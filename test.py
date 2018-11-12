@@ -1,25 +1,20 @@
-import wx
+import pandas as pd
+import random
 
-class ChildFrame(wx.Frame):
-    def __init__(self,parent):
-        wx.Frame.__init__(self,parent,-1,"child frame",pos=(100,100))
+input_material = pd.read_excel("materials.xlsx", sheet_name="materials")
+input_sauce = pd.read_excel("materials.xlsx", sheet_name="sauces")
 
-class MyWindow(wx.Frame):
-    def __init__(self,parent,id):
-        wx.Frame.__init__(self,parent,id,"main frame")
-        panel = wx.Panel(self)
-        self.showChildBtn = wx.Button(panel,label="show child",pos=(10,10))
-        self.exitBtn = wx.Button(panel,label="exit",pos=(100,10))
-        self.Bind(wx.EVT_BUTTON,self.showChild,self.showChildBtn)
-        self.Bind(wx.EVT_BUTTON,self.exit,self.exitBtn)
-    def showChild(self,event):
-        childFrame = ChildFrame(self)
-        childID = childFrame.Show()
-    def exit(self,event):
-        self.Close(True)
+kind = random.randint(2,4)
+sample = input_material.sample(n=kind)
 
-if __name__ == '__main__':
-    app = wx.App()
-    frame = MyWindow(parent=None,id=-1)
-    frame.Show()
-    app.MainLoop()
+print(sample)
+or_data = sample.iloc[0,1:]
+for i in range(len(sample.index) - 1):
+    or_data = or_data | sample.iloc[i+1,1:]
+
+print(or_data)
+
+pentagon = input_sauce[['旨味','塩味','辛味','酸味','甘味']] & ~or_data
+print(pentagon)
+print(input_sauce[pentagon & ~or_data])
+
